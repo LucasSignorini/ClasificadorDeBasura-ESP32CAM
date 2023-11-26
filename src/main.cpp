@@ -181,6 +181,8 @@ void setup() {
 
   // ---------------------------------------------------------------------------------------------
 
+  nn = new NeuralNetwork();
+
   Serial.printf("Total PSRAM: %d", ESP.getPsramSize());
   Serial.printf("Free PSRAM: %d", ESP.getFreePsram());
   
@@ -266,9 +268,7 @@ void capturePhotoSaveSpiffs( void ) {
   //--------------------------FIN PRE-PROCESAMIENTO----------------------------------------------
   //---------------------------------------------------------------------------------------------
 
-  
   // CLASIFICACIÓN 
-  nn = new NeuralNetwork();
   
   float result = nn->classify_image(ei_buf);
 
@@ -283,8 +283,6 @@ void capturePhotoSaveSpiffs( void ) {
 
   Serial.printf("Predicted Value: %f , Predicted %s\n", result, predicted);
   
-  //delete nn;
-  
 
   // CONVERSION A JPG Para ver en webpage
    
@@ -295,8 +293,7 @@ void capturePhotoSaveSpiffs( void ) {
     printf("Malloc failed to allocate buffer for JPG.\n");
   }
   size_t jpg_size = 0;
-  // fmt2jpg(ei_buf, sizeof(ei_buf), 48 , 48, PIXFORMAT_RGB888, 40, &jpg_buf, &jpg_size); // (rgb888 48x48) -> jpg 
-  // fmt2jpg(fb->buf, fb->len, fb->width, fb->height, fb->format, 50, &jpg_buf, &jpg_size); CAM RGB565 -> JPG 
+  fmt2jpg(ei_buf, sizeof(ei_buf), 48 , 48, PIXFORMAT_RGB888, 40, &jpg_buf, &jpg_size); // (rgb888 48x48) -> jpg 
   printf("Converted JPG size: %d bytes \n", jpg_size);
   */
  
@@ -374,8 +371,7 @@ void config_init() {
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 16500000;
   config.frame_size = FRAMESIZE_SVGA;
-  config.pixel_format = PIXFORMAT_JPEG; // for streaming
-  //config.pixel_format = PIXFORMAT_RGB565; // for face detection/recognition
+  config.pixel_format = PIXFORMAT_JPEG; 
   config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
   config.fb_location = CAMERA_FB_IN_PSRAM;
   config.jpeg_quality = 10;
