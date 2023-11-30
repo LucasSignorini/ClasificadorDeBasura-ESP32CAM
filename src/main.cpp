@@ -21,9 +21,8 @@ camera_config_t config;
 
 void config_init();
 
-
 // Create AsyncWebServer object on port 80
-//AsyncWebServer server(80);
+// AsyncWebServer server(80);
 
 boolean takeNewPhoto = false;
 
@@ -74,16 +73,11 @@ const char index_html[] PROGMEM = R"rawliteral(
 void setup() {
   
   Serial.begin(115200);
-  delay(1000);
   
   Serial.printf("\n 1. Free heap: %d  // %d  // MaxAllocHeap: %d \n ", ESP.getFreeHeap(), ESP.getHeapSize(), ESP.getMaxAllocHeap() );
   Serial.printf("Total PSRAM: %d", ESP.getPsramSize());
   Serial.printf("Free PSRAM: %d", ESP.getFreePsram());
   
-  // NN INIT ----------------------------------------------------------------------------------
-
-  // nn = new NeuralNetwork();
-
   // SPIFFS INIT ----------------------------------------------------------------------------------
 
 
@@ -98,6 +92,7 @@ void setup() {
   
 
   // WIFI INIT ----------------------------------------------------------------------------------
+  
   /*
   WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
   //WiFi.mode(WIFI_AP);
@@ -156,7 +151,6 @@ void setup() {
   Serial.print(WiFi.localIP());
   Serial.println("' to connect");
   */
-
   // ---------------------------------------------------------------------------------------------
   //  ---------------------------------------CAMER INIT-------------------------------------------
   config_init(); 
@@ -180,6 +174,8 @@ void setup() {
   pinMode (LED_BUILTIN, OUTPUT);
 
   // ---------------------------------------------------------------------------------------------
+
+  // NN INIT ----------------------------------------------------------------------------------
 
   nn = new NeuralNetwork();
 
@@ -222,7 +218,7 @@ void capturePhotoSaveSpiffs( void ) {
     digitalWrite(LED_BUILTIN, HIGH);
     
     fb = esp_camera_fb_get();
-    delay(10000);
+    delay(3000);
 
     if (!fb) {
       Serial.println("Camera capture failed");
@@ -239,11 +235,9 @@ void capturePhotoSaveSpiffs( void ) {
   }
   
   Serial.printf("fb->len: %d \n", fb->len);
-
+  
   // PROCESAMIENTO DE LA FOTO
   // Photo to RGB888:
-
-  
   rgb888_buf = (uint8_t *) ps_malloc(fb->width * fb->height * 3); 
   if(rgb888_buf == NULL){
     printf("Malloc failed to allocate buffer for JPG.\n");
@@ -258,10 +252,10 @@ void capturePhotoSaveSpiffs( void ) {
       return;
   }
 
-  // Resize Image (800, 600, 3) -> (48, 48, 3):
-  ei_buf = (uint8_t *) ps_malloc(48*48*3); 
+  // Resize Image (800, 600, 3) -> (72, 72, 3):
+  ei_buf = (uint8_t *) ps_malloc(72*72*3); 
   Serial.println("Resizing the frame buffer... \n");
-  image_resize_linear(ei_buf, rgb888_buf, 48, 48, 3, fb->width, fb->height);
+  image_resize_linear(ei_buf, rgb888_buf, 72, 72, 3, fb->width, fb->height);
   free(rgb888_buf);
   Serial.printf("El size de ei_buf es: %d ", sizeof(ei_buf));
   
@@ -345,7 +339,7 @@ void loop() {
     capturePhotoSaveSpiffs();
     takeNewPhoto = false;
   }
-  delay(10000);
+  delay(5000);
   takeNewPhoto = true;
 }
 

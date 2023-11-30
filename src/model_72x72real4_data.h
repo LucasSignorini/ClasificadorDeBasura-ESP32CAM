@@ -1,0 +1,1 @@
+extern unsigned char garbageTflite_72x72_real4_tflite[];

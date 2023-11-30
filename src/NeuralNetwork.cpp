@@ -1,5 +1,5 @@
 #include "NeuralNetwork.h"
-#include "model_superlite_data.h"
+#include "model_72x72real4_data.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
@@ -8,11 +8,11 @@
 #include "image_util.h"
 
 float* model_input_buffer = nullptr;
-const int kArenaSize = 250000;
+const int kArenaSize = 525328;
 NeuralNetwork::NeuralNetwork()
 {
     error_reporter = new tflite::MicroErrorReporter();
-    model = tflite::GetModel(garbageTflite_superlite_tflite);
+    model = tflite::GetModel(garbageTflite_72x72_real4_tflite);
 
     // This pulls in the operators implementations we need
     
@@ -74,7 +74,7 @@ NeuralNetwork::NeuralNetwork()
 
 float NeuralNetwork::classify_image(uint8_t *ei_buf) {
     
-    int img_size = 48*48*3;
+    int img_size = 72*72*3;
     
     Serial.printf("DIMS: %d \n", input->dims->size);
     Serial.printf("input-> bytes:  %d \n", input->bytes);
@@ -97,32 +97,4 @@ float NeuralNetwork::classify_image(uint8_t *ei_buf) {
 
     return output->data.f[0];
 
-}
-
-
-NeuralNetwork::~NeuralNetwork() {
-    if (model_input_buffer) {
-        free(model_input_buffer); // Liberar el buffer model_input_buffer
-        model_input_buffer = nullptr;
-    }
-    
-    if (interpreter) {
-        delete interpreter; // Liberar el objeto interpreter
-        interpreter = nullptr;
-    }
-
-    if (resolver) {
-        delete resolver; // Liberar el objeto resolver
-        resolver = nullptr;
-    }
-
-    if (error_reporter) {
-        delete error_reporter; // Liberar el objeto error_reporter
-        error_reporter = nullptr;
-    }
-
-    if (tensor_arena) {
-        free(tensor_arena); // Liberar el tensor_arena
-        tensor_arena = nullptr;
-    }
 }
