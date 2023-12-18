@@ -2,6 +2,7 @@ En este repositorio se tiene el codigo utilizado por la ESP32CAM para clasificar
 
 
 Introducción al Proyecto:
+
 La idea fundamental que impulsa este proyecto es la creación de un clasificador de basura automático, diseñado para proporcionar una mayor eficiencia en el proceso de clasificación de los residuos. La implementación de este sistema podría tener un impacto significativo en la optimización de la gestión de residuos y en la reducción del impacto ambiental.
 
 El proceso de clasificación se desarrolla en varias etapas. Comienza con un depósito de basura al que se conecta una cinta transportadora. A medida que la basura avanza por la cinta, se lleva a cabo una clasificación inicial mediante el uso de un sensor inductivo, el cual es capaz de detectar materiales metálicos y no metálicos. Además, se emplean sensores capacitivos que, tras una adecuada calibración, identifican y separan materiales no conductores, como papel/cartón, vidrio y plástico.
