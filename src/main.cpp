@@ -9,6 +9,16 @@
 
 //#include "esp_http_server.h"
 
+int activacion = 12;  //Sensor ultrasonido 
+int pinPlastico = 14;
+int pinCarton = 15; 
+
+
+unsigned long startTime = 0;
+const unsigned long timeThreshold = 2000;
+
+unsigned long TiempoDeDuracion = 0;
+
 NeuralNetwork *nn;
 #define CAMERA_MODEL_AI_THINKER // Has PSRAM
 
@@ -18,16 +28,15 @@ NeuralNetwork *nn;
 
 camera_config_t config;
 
-
 void config_init();
 
-// Create AsyncWebServer object on port 80
+// Crea un WebServer en el puerto 80
 // AsyncWebServer server(80);
 
 boolean takeNewPhoto = false;
 
 // Photo File Name to save in SPIFFS
-#define FILE_PHOTO "/photo.jpg"
+#define FILE_PHOTO "/foto.jpg"
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
@@ -41,15 +50,14 @@ const char index_html[] PROGMEM = R"rawliteral(
 </head>
 <body>
   <div id="container">
-    <h2>ESP32-CAM Last Photo</h2>
-    <p>It might take more than 5 seconds to capture a photo.</p>
+    <h2>ESP32-CAM Foto</h2>
     <p>
-      <button onclick="rotatePhoto();">ROTATE</button>
-      <button onclick="capturePhoto()">CAPTURE PHOTO</button>
-      <button onclick="location.reload();">REFRESH PAGE</button>
+      <button onclick="rotarFoto();">ROTAR</button>
+      <button onclick="capturarFoto()">CAPTURAR FOTO</button>
+      <button onclick="location.reload();">REFRESCAR PAG</button>
     </p>
   </div>
-  <div><img src="saved-photo" id="photo" width="70%"></div>
+  <div><img src="saved-photo" id="foto" width="70%"></div>
 </body>
 <script>
   var deg = 0;
@@ -80,57 +88,40 @@ void setup() {
   
   // SPIFFS INIT ----------------------------------------------------------------------------------
 
-
+  /*
   if (!SPIFFS.begin(true)) {
-  Serial.println("An Error has occurred while mounting SPIFFS");
+  Serial.println("Un error ocurrio al inicializar SPIFFS");
   ESP.restart();
   }
   else {
     delay(500);
-    Serial.println("SPIFFS mounted successfully");
+    Serial.println("SPIFFS inicializado correctamente");
   }
-  
+  */
 
   // WIFI INIT ----------------------------------------------------------------------------------
   
   /*
-  WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
-  //WiFi.mode(WIFI_AP);
-  //WiFi.softAP("ESP32WIFI", NULL);
-  //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
+  WiFi.mode(WIFI_STA); 
   
   WiFiManager wm;
 
-  // reset settings - wipe stored credentials for testing
-  // these are stored by the esp library
   // wm.resetSettings();
 
-  // Automatically connect using saved credentials,
-  // if connection fails, it starts an access point with the specified name ( "AutoConnectAP"),
-  // if empty will auto generate SSID, if password is blank it will be anonymous AP (wm.autoConnect())
-  // then goes into a blocking loop awaiting configuration and will return success result
-
   bool res;
-  // res = wm.autoConnect(); // auto generated AP name from chipid
-  // res = wm.autoConnect("AutoConnectAP"); // anonymous ap
-  res = wm.autoConnect("AutoConnectAP","password"); // password protected ap
-  //res = wm.autoConnect(); // password protected ap
+  // res = wm.autoConnect();
+  // res = wm.autoConnect("AutoConnectAP"); 
+  res = wm.autoConnect("AutoConnectAP","password"); 
+  //res = wm.autoConnect(); 
 
-  
   if(!res) {
-      Serial.println("Failed to connect");
+      Serial.println("No se pudo conectar");
       ESP.restart();
   } 
-  else {
-      //if you get here you have connected to the WiFi    
-      Serial.println("Connected...yeey :)");
+  else {  
+      Serial.println("Connectado");
   }
-  
-  Serial.printf("\n PRE init Free heap: %d  // %d  // MaxAllocHeap: %d \n ", ESP.getFreeHeap(), ESP.getHeapSize(), ESP.getMaxAllocHeap() );
-  
-  
-    // Route for root / web page
-  
+      
   server.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
     request->send_P(200, "text/html", index_html);
   });
@@ -144,12 +135,11 @@ void setup() {
     request->send(SPIFFS, FILE_PHOTO, "image/jpg", false);
   });
 
-  // Start server
+  // Se arranca el server
   server.begin();
   
-
   Serial.print(WiFi.localIP());
-  Serial.println("' to connect");
+  Serial.println("' para conectarse");
   */
   // ---------------------------------------------------------------------------------------------
   //  ---------------------------------------CAMER INIT-------------------------------------------
@@ -158,10 +148,10 @@ void setup() {
   // camera init
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x", err);
+    Serial.printf("Inic. de la camara fallo con el siguiente error: 0x%x", err);
     return;
   } else {
-    Serial.println("Camera init OK");
+    Serial.println("Camara init OK");
   }
   Serial.printf("\n AFTER init Free heap: %d  // %d  // MaxAllocHeap: %d \n ", ESP.getFreeHeap(), ESP.getHeapSize(), ESP.getMaxAllocHeap() );
   
@@ -173,16 +163,30 @@ void setup() {
 
   pinMode (LED_BUILTIN, OUTPUT);
 
+  camera_fb_t * fb = NULL;
+  fb = esp_camera_fb_get();
+  esp_camera_fb_return(fb);
   // ---------------------------------------------------------------------------------------------
 
   // NN INIT ----------------------------------------------------------------------------------
 
   nn = new NeuralNetwork();
 
+
+  //INTERRUPCION INIT---------------------------------------
+
+  pinMode(activacion, INPUT_PULLDOWN);                   //Establece el sensor1 como entrada con resistencia de Pulldown incluida
+	//attachInterrupt(activacion, clasificacionIA, RISING);       //Activa la interrupion del sensor 1 y la llama isrSensor1. La misma se genera con un flanco ascendente
+
+  pinMode(pinCarton, OUTPUT);
+  pinMode(pinPlastico, OUTPUT);
+
   Serial.printf("Total PSRAM: %d", ESP.getPsramSize());
   Serial.printf("Free PSRAM: %d", ESP.getFreePsram());
   
 }
+
+
 
 bool isAllZeros(uint8_t* buffer, size_t length) {
     for (size_t i = 0; i < length; i++) {
@@ -201,81 +205,89 @@ bool checkPhoto( fs::FS &fs ) {
 }
 
 // Capture Photo, classify and Save it to SPIFFS
-void capturePhotoSaveSpiffs( void ) {
+void captureAndClassify( void ) {
   camera_fb_t * fb = NULL; // pointer
   uint8_t *ei_buf;
   uint8_t *rgb888_buf = NULL;
   size_t out_len;
   bool s;
-  bool ok = 0; // Boolean indicating if the picture has been taken correctly
+  bool ok = 0; // Boolean que indica si la captura fue tomada correctamente
 
-  do {
     // Take a photo with the camera
-    Serial.println("Taking a photo...");
-    Serial.printf("\n photo init Free heap: %d  // %d  // MaxAllocHeap: %d \n ", ESP.getFreeHeap(), ESP.getHeapSize(), ESP.getMaxAllocHeap() );
+    Serial.println("Tomando una foto... \n");
+    Serial.printf("Free heap: %d  // %d  // MaxAllocHeap: %d \n ", ESP.getFreeHeap(), ESP.getHeapSize(), ESP.getMaxAllocHeap() );
     Serial.printf("Total PSRAM: %d ", ESP.getPsramSize());
     Serial.printf("Free PSRAM: %d \n", ESP.getFreePsram());
     digitalWrite(LED_BUILTIN, HIGH);
     
+    fb = esp_camera_fb_get(); // Se captura una foto y se descarta
+    esp_camera_fb_return(fb); // Debido a que el buffer viene 1 foto atrasada
+    fb = NULL; 
     fb = esp_camera_fb_get();
-    delay(3000);
+   
 
     if (!fb) {
-      Serial.println("Camera capture failed");
+      Serial.println("Fallo la captura de la foto");
       digitalWrite(LED_BUILTIN, LOW);
       return;
     }
     
-    
-
+  
   if (isAllZeros(fb->buf, fb->len)) {
-    Serial.println("1. fb->buf contiene solo ceros. \n");
+    Serial.println("La foto contiene solo ceros. \n");
+    Serial.println("Fallo la captura de la foto  \n");
+    digitalWrite(LED_BUILTIN, LOW);
+    return;
   } else {
-    Serial.println("1. fb->buf contiene al menos un byte distinto de cero. \n");
+    Serial.println("La foto contiene al menos un byte distinto de cero. \n");
   }
   
-  Serial.printf("fb->len: %d \n", fb->len);
+  Serial.printf("Tamaño de la foto (en bytes): %d \n", fb->len);
   
   // PROCESAMIENTO DE LA FOTO
   // Photo to RGB888:
   rgb888_buf = (uint8_t *) ps_malloc(fb->width * fb->height * 3); 
   if(rgb888_buf == NULL){
-    printf("Malloc failed to allocate buffer for JPG.\n");
+    printf("Memoria insuficiente para el buffer RGB \n");
   }
-  Serial.println("Converting to RGB888...\n");
+  Serial.println("Conversion a RGB888...\n");
   s = fmt2rgb888 (fb->buf, fb->len, fb->format, rgb888_buf);
   if (!s)
   {
       free(rgb888_buf);
       digitalWrite(LED_BUILTIN, LOW);
-      Serial.println("To RGB888 failed. \n");
+      Serial.println("Conversion a RGB888 fallo. \n");
       return;
   }
 
   // Resize Image (800, 600, 3) -> (72, 72, 3):
   ei_buf = (uint8_t *) ps_malloc(72*72*3); 
-  Serial.println("Resizing the frame buffer... \n");
+  Serial.println("Redimension de la foto... \n");
   image_resize_linear(ei_buf, rgb888_buf, 72, 72, 3, fb->width, fb->height);
   free(rgb888_buf);
-  Serial.printf("El size de ei_buf es: %d ", sizeof(ei_buf));
+  Serial.printf("El tamaño de ei_buf es: %d ", sizeof(ei_buf));
   
   //--------------------------FIN PRE-PROCESAMIENTO----------------------------------------------
   //---------------------------------------------------------------------------------------------
 
   // CLASIFICACIÓN 
-  
+  Serial.println("Clasificacion: \n");
   float result = nn->classify_image(ei_buf);
 
   const char *predicted = result > 0.5 ? "Cardboard/Paper" : "Plastic";
-  
+
   if (result > 0.5){
     result = result;
+    digitalWrite(pinCarton, HIGH);
+    digitalWrite(pinPlastico, LOW);
   }
   else{
     result = 1 - result;
+    digitalWrite(pinPlastico, HIGH);
+    digitalWrite(pinCarton, LOW);
   }
 
-  Serial.printf("Predicted Value: %f , Predicted %s\n", result, predicted);
+  Serial.printf("Probabilidad predecida: %f , Prediccion: %s\n", result, predicted);
   
 
   // CONVERSION A JPG Para ver en webpage
@@ -290,11 +302,8 @@ void capturePhotoSaveSpiffs( void ) {
   fmt2jpg(ei_buf, sizeof(ei_buf), 48 , 48, PIXFORMAT_RGB888, 40, &jpg_buf, &jpg_size); // (rgb888 48x48) -> jpg 
   printf("Converted JPG size: %d bytes \n", jpg_size);
   */
- 
-  Serial.printf("Total PSRAM FIN: %d ", ESP.getPsramSize());
-  Serial.printf("Free PSRAM FIN: %d \n", ESP.getFreePsram());
 
-
+  /*
   // Photo file name
   Serial.printf("Picture file name: %s\n", FILE_PHOTO);
   File file = SPIFFS.open(FILE_PHOTO, FILE_WRITE);
@@ -314,7 +323,7 @@ void capturePhotoSaveSpiffs( void ) {
   }
   // Close the file
   file.close();
-  
+  */
   digitalWrite(LED_BUILTIN, LOW);
   //free(jpg_buf);
   //jpg_buf = NULL;
@@ -322,26 +331,22 @@ void capturePhotoSaveSpiffs( void ) {
   esp_camera_fb_return(fb);
   free(ei_buf);
 
-  Serial.printf("After Free Memory - Total PSRAM: %d ", ESP.getPsramSize());
   Serial.printf("After Free Memory - Free PSRAM: %d \n", ESP.getFreePsram());
 
   // check if file has been correctly saved in SPIFFS
-  //ok = checkPhoto(SPIFFS);
-  Serial.printf("OK STATUS: %d\n", ok);
-  ok = 1;
-  } while ( !ok );
+  // ok = checkPhoto(SPIFFS);
   
 }
 
 void loop() {
-  
-  if (takeNewPhoto) {
-    capturePhotoSaveSpiffs();
-    takeNewPhoto = false;
-  }
-  delay(5000);
-  takeNewPhoto = true;
+if (digitalRead(activacion)){
+    startTime = millis();
+    captureAndClassify(); 
+    TiempoDeDuracion = millis() - startTime;
+    Serial.printf("Le tomo %d milisegundos realizar la clasificacion.\n", TiempoDeDuracion); 
 }
+}
+
 
 
 void config_init() {

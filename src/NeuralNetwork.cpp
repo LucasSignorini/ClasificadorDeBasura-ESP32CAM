@@ -14,7 +14,7 @@ NeuralNetwork::NeuralNetwork()
     error_reporter = new tflite::MicroErrorReporter();
     model = tflite::GetModel(garbageTflite_72x72_real4_tflite);
 
-    // This pulls in the operators implementations we need
+    // Se definen las operaciones necesarias
     
     resolver = new tflite::MicroMutableOpResolver<12>();
 
@@ -31,26 +31,27 @@ NeuralNetwork::NeuralNetwork()
     resolver->AddQuantize();
     resolver->AddDequantize();
 
-    // Agrega los operadores de entrada y salida de tu modelo
+    // Asigna la memoria necesaria por el modelo
     tensor_arena = (uint8_t *) ps_malloc(kArenaSize);
     if (!tensor_arena)
     {
-        TF_LITE_REPORT_ERROR(error_reporter, "Could not allocate arena");
+        TF_LITE_REPORT_ERROR(error_reporter, "No se pudo asignar la memoria");
         return;
     }
-    // Build an interpreter to run the model with.
+    // Crea un interprete para correr el modelo
     interpreter = new tflite::MicroInterpreter(
         model, *resolver, tensor_arena, kArenaSize, error_reporter);
-    // Allocate memory from the tensor_arena for the model's tensors.
+
+    // Se usa parte de la memoria asignada en tensor_arena para los tensores del modelo
     TfLiteStatus allocate_status = interpreter->AllocateTensors();
     if (allocate_status != kTfLiteOk)
     {
-        TF_LITE_REPORT_ERROR(error_reporter, "AllocateTensors() failed");
+        TF_LITE_REPORT_ERROR(error_reporter, "AllocateTensors() fallo");
         return;
     }
-    size_t used_bytes = interpreter->arena_used_bytes();
+    
 
-    // Obtain pointers to the model's input and output tensors.
+    // Se obtienen los punteros de entrada y salida del modelo.
     input = interpreter->input(0);
     model_input_buffer = input->data.f;
     output = interpreter->output(0);
@@ -59,16 +60,13 @@ NeuralNetwork::NeuralNetwork()
     int h = input->dims->data[1];
     int w = input->dims->data[2];
     int channels = input->dims->data[3];
-    Serial.print("\n ");
-    Serial.print(batch_size);
-    Serial.print("\n ");
-    Serial.print(h);
-    Serial.print("\n ");
-    Serial.print(w);
-    Serial.print("\n ");
-    Serial.print(channels);
-    Serial.print("\n ");
-    TF_LITE_REPORT_ERROR(error_reporter, "Used bytes %d\n", used_bytes);
+    Serial.printf("Model input batch_size: %d\n", batch_size);
+    Serial.printf("Model input Alto: %d\n", h);
+    Serial.printf("Model input Ancho: %d\n", w);
+    Serial.printf("Model input Numero de canales: %d\n", channels);
+    
+    size_t used_bytes = interpreter->arena_used_bytes();
+    TF_LITE_REPORT_ERROR(error_reporter, "Bytes utilizados: %d\n", used_bytes);
 }
 
 
@@ -79,8 +77,8 @@ float NeuralNetwork::classify_image(uint8_t *ei_buf) {
     Serial.printf("DIMS: %d \n", input->dims->size);
     Serial.printf("input-> bytes:  %d \n", input->bytes);
 
-    // Assign each RGB pixel into model input buffer
-    // Diveded by 255.0f to normalize
+    // Se asigna cada Pixel RGB al input buffer del modelo
+    // Dividido por 255.0f para que este normalizado
     for (int i=0; i< img_size; i++) {
         model_input_buffer[i] = ei_buf[i]/ 255.0f;  
     }
@@ -90,11 +88,12 @@ float NeuralNetwork::classify_image(uint8_t *ei_buf) {
 		error_reporter->Report("Error");
     }
     
+    // Se obtiene el buffer de salida
     TfLiteTensor* output = interpreter->output(0);
 
+    // Se imprimen los resultados para ambas clases
     Serial.printf("Output 0: %f \n", output->data.f[0]);
     Serial.printf("Output 1: %f \n", output->data.f[1]);
 
     return output->data.f[0];
-
 }
