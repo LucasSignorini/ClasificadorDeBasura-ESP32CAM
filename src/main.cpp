@@ -7,7 +7,6 @@
 #include "image_util.h"
 #include "dl_lib_matrix3d.h"
 
-
 int activacion = 12;  //Sensor ultrasonido 
 int pinPlastico = 14;
 int pinCarton = 15; 
